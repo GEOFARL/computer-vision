@@ -1,69 +1,117 @@
-from graphics import Point, Rectangle
 import numpy as np
-
+import math as mt
+from graphics import Polygon, Point
 
 class Transformation:
-    def __init__(self, shape, dx, dy, scale_factor, min_size, max_size):
+    def __init__(self, shape, initial_coords, dx, dy, scale_factor, angle_deg):
         self.shape = shape
+        self.coords = np.array(initial_coords)
         self.dx = dx
         self.dy = dy
         self.scale_factor = scale_factor
-        self.min_size = min_size
-        self.max_size = max_size
+        self.min_scale = 1 / scale_factor
+        self.max_scale = scale_factor
+        self.current_scale = 1
+        self.scaling_up = True
+        self.angle_deg = angle_deg
 
-    def translate(self, window):
-        new_coordinates = self._calculate_new_coordinates()
-        self._check_and_reverse_direction(new_coordinates, window)
-        self.shape.move(self.dx, self.dy)
+    def move(self, window):
+        translated_coords = self._apply_translation()
+        scaled_coords = self._apply_scaling(translated_coords)
+        rotated_coords = self._apply_rotation(scaled_coords)
 
-    def _calculate_new_coordinates(self):
-        current_coords = np.array([[self.shape.p1.x, self.shape.p1.y], 
-                                   [self.shape.p2.x, self.shape.p2.y]])
-        delta = np.array([self.dx, self.dy])
-        new_coords = current_coords + delta
-        return new_coords
-
-    def _check_and_reverse_direction(self, new_coords, window):
-        new_x1, new_y1 = new_coords[0]
-        new_x2, new_y2 = new_coords[1]
-        if new_x1 < 0 or new_x2 > window.width:
+        if not self._is_within_bounds(rotated_coords, window):
             self.dx = -self.dx
-        if new_y1 < 0 or new_y2 > window.height:
             self.dy = -self.dy
+            translated_coords = self._apply_translation()
+            scaled_coords = self._apply_scaling(translated_coords)
+            rotated_coords = self._apply_rotation(scaled_coords)
 
-    def scale(self, scaling_up, window):
-        factor, new_width, new_height = self._calculate_scaling_factor(scaling_up)
-        new_dimensions = self._calculate_new_dimensions(new_width, new_height)
-        
-        if self._is_within_size_limits(new_width, new_height) and self._is_within_bounds(new_dimensions, window):
-            self._update_shape(new_dimensions, window)
+        self._update_shape(rotated_coords, window)
+        self._update_scaling()
 
-    def _calculate_scaling_factor(self, scaling_up):
-        factor = self.scale_factor if scaling_up else 1 / self.scale_factor
-        current_width = self.shape.p2.x - self.shape.p1.x
-        current_height = self.shape.p2.y - self.shape.p1.y
-        new_width = current_width * factor
-        new_height = current_height * factor
-        return factor, new_width, new_height
+    def _apply_translation(self):
+        translation_matrix = np.array([
+            [1, 0, self.dx],
+            [0, 1, self.dy],
+            [0, 0, 1]
+        ])
 
-    def _calculate_new_dimensions(self, new_width, new_height):
-        center = self.shape.getCenter()
-        new_coords = np.array([center.x, center.y]) + np.array([[-new_width / 2, -new_height / 2], 
-                                                                [new_width / 2, new_height / 2]])
-        return new_coords
+        return np.dot(self.coords, translation_matrix.T)
 
-    def _is_within_size_limits(self, new_width, new_height):
-        return self.min_size <= new_width <= self.max_size and self.min_size <= new_height <= self.max_size
+    def _apply_rotation(self, coords):
+        theta_rad = mt.radians(self.angle_deg)
 
-    def _is_within_bounds(self, new_coords, window):
-        new_x1, new_y1 = new_coords[0]
-        new_x2, new_y2 = new_coords[1]
-        return 0 <= new_x1 <= window.width and 0 <= new_x2 <= window.width and \
-               0 <= new_y1 <= window.height and 0 <= new_y2 <= window.height
+        center = np.mean(coords[:, :2], axis=0)
+
+        rotation_matrix = np.array([
+            [mt.cos(theta_rad), -mt.sin(theta_rad), 0],
+            [mt.sin(theta_rad),  mt.cos(theta_rad), 0],
+            [0, 0, 1]
+        ])
+
+        translation_to_origin = np.array([
+            [1, 0, -center[0]],
+            [0, 1, -center[1]],
+            [0, 0, 1]
+        ])
+
+        translation_back = np.array([
+            [1, 0, center[0]],
+            [0, 1, center[1]],
+            [0, 0, 1]
+        ])
+
+        rotated_coords = np.dot(np.dot(np.dot(coords, translation_to_origin.T), rotation_matrix.T), translation_back.T)
+
+        return rotated_coords
+
+    def _apply_scaling(self, coords):
+        center = np.mean(coords[:, :2], axis=0)
+
+        scaling_matrix = np.array([
+            [self.current_scale, 0, 0],
+            [0, self.current_scale, 0],
+            [0, 0, 1]
+        ])
+
+        translation_to_origin = np.array([
+            [1, 0, -center[0]],
+            [0, 1, -center[1]],
+            [0, 0, 1]
+        ])
+
+        translation_back = np.array([
+            [1, 0, center[0]],
+            [0, 1, center[1]],
+            [0, 0, 1]
+        ])
+
+        scaled_coords = np.dot(np.dot(np.dot(coords, translation_to_origin.T), scaling_matrix.T), translation_back.T)
+
+        return scaled_coords
+
+    def _update_scaling(self):
+        if self.scaling_up and self.current_scale >= self.max_scale:
+            self.scaling_up = False
+        elif not self.scaling_up and self.current_scale <= self.min_scale:
+            self.scaling_up = True
+
+        self.current_scale += 0.01 if self.scaling_up else -0.01
+
+    def _is_within_bounds(self, coords, window):
+        x_min, y_min = np.min(coords[:, :2], axis=0)
+        x_max, y_max = np.max(coords[:, :2], axis=0)
+
+        if x_min < 0 or x_max > window.width or y_min < 0 or y_max > window.height:
+            return False
+        return True
 
     def _update_shape(self, new_coords, window):
         self.shape.undraw()
-        new_x1, new_y1 = new_coords[0]
-        new_x2, new_y2 = new_coords[1]
-        self.shape = Rectangle(Point(new_x1, new_y1), Point(new_x2, new_y2))
+
+        new_points = [Point(new_coords[i, 0], new_coords[i, 1]) for i in range(len(new_coords))]
+        self.shape = Polygon(*new_points)
         self.shape.draw(window.win)
+
+        self.coords = new_coords
