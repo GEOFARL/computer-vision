@@ -29,7 +29,7 @@ def perform_scaling(transformation, window):
 def main():
     width, height = 600, 600
     window, rect = setup_graphics(width, height)
-    transformation = Transformation(shape=rect, dx=10, dy=-10, scale_factor=1.2, min_size=50, max_size=min(width, height) * 0.5)
+    transformation = Transformation(shape=rect, dx=10, dy=-10, scale_factor=1.1, min_size=20, max_size=min(width, height) * 0.7)
     num_frames = 300
     run_animation(window, transformation, num_frames)
     window.check_mouse()
