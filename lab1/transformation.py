@@ -1,3 +1,4 @@
+import random
 import numpy as np
 import math as mt
 from graphics import Polygon, Point
@@ -16,6 +17,8 @@ class Transformation:
         self.angle_deg = angle_deg
 
     def move(self, window):
+        self._randomize_translation()
+
         translated_coords = self._apply_translation()
         scaled_coords = self._apply_scaling(translated_coords)
         rotated_coords = self._apply_rotation(scaled_coords)
@@ -29,6 +32,11 @@ class Transformation:
 
         self._update_shape(rotated_coords, window)
         self._update_scaling()
+
+    def _randomize_translation(self):
+        randomization_factor = 5
+        self.dx += random.uniform(-randomization_factor, randomization_factor)
+        self.dy += random.uniform(-randomization_factor, randomization_factor)
 
     def _apply_translation(self):
         translation_matrix = np.array([
@@ -112,6 +120,12 @@ class Transformation:
 
         new_points = [Point(new_coords[i, 0], new_coords[i, 1]) for i in range(len(new_coords))]
         self.shape = Polygon(*new_points)
+        self.shape.setFill('red')
+        self.shape.setOutline('red')
         self.shape.draw(window.win)
 
         self.coords = new_coords
+
+    def get_center(self):
+        center = np.mean(self.coords[:, :2], axis=0)
+        return center

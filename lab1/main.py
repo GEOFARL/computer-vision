@@ -1,4 +1,4 @@
-from graphics import Polygon, Point
+from graphics import Polygon, Point, Line
 from graphics_window import GraphicsWindow
 from transformation import Transformation
 import time
@@ -14,16 +14,27 @@ def setup_graphics(width, height):
     ]
 
     polygon = Polygon(Point(100, 450), Point(200, 450), Point(200, 500), Point(100, 500))
+    polygon.setFill('red')
+    polygon.setOutline('red')
     polygon.draw(window.win)
     
     return window, polygon, initial_coords
 
 def run_animation(window, transformation, num_frames):
-    for i in range(num_frames):
+    prev_center = transformation.get_center()
+
+    for _ in range(num_frames):
         if window.check_mouse():
             return
         time.sleep(0.05)
+        
         transformation.move(window)
+
+        new_center = transformation.get_center()
+        line = Line(Point(prev_center[0], prev_center[1]), Point(new_center[0], new_center[1]))
+        line.setOutline('blue')
+        line.draw(window.win)
+        prev_center = new_center
 
 def main():
     width, height = 600, 600
