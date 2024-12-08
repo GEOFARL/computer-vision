@@ -6,3 +6,4 @@
 - Lab 4: Image Enhancement and Object Identification using Contour Detection in Digital Images
 - Lab 5: Image segmentation and clustering for object identification and differentiation on digital Earth surface images from remote sensing data
 - Lab 6: Descriptor-based Image Identification and Comparison, focuses on identifying objects using image descriptors, calculating matches, and deriving an identification probability.
+- Lab 7: Neural network for image identification
